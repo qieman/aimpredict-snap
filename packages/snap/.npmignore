@@ -1,0 +1,27 @@
+# Source and tests
+src/
+*.test.ts
+*.test.tsx
+**/__tests__/
+**/__mocks__/
+
+# Build and dev tooling
+snap.config.ts
+tsconfig.json
+jest.config.js
+.eslintrc*
+eslint.config.*
+
+# Caches and coverage
+.eslintcache
+coverage/
+*.tsbuildinfo
+.nyc_output
+
+# IDE and OS
+.DS_Store
+.vscode/
+
+# Local dev artifacts
+.cache/
+*.log

@@ -1,0 +1,43 @@
+{
+  "version": "0.1.0",
+  "description": "Prediction Market Aggregator",
+  "proposedName": "AimPredict",
+  "repository": {
+    "type": "git",
+    "url": "git+https://git.fluxdesk.net/fps/AIM-Build.git",
+    "directory": "packages/snap/packages/snap"
+  },
+  "source": {
+    "shasum": "b4IG9F6AVJFjTUcVgR6kiF52GOHCUTRU18asYIP0/iM=",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "iconPath": "images/icon.svg",
+        "packageName": "@aim-predict/snap",
+        "registry": "https://registry.npmjs.org/"
+      }
+    }
+  },
+  "initialPermissions": {
+    "endowment:rpc": {
+      "dapps": true,
+      "snaps": false
+    },
+    "endowment:ethereum-provider": {},
+    "endowment:network-access": {},
+    "endowment:cronjob": {
+      "jobs": [
+        {
+          "expression": "* * * * *",
+          "request": {
+            "method": "pollMessages"
+          }
+        }
+      ]
+    },
+    "snap_manageState": {},
+    "snap_notify": {}
+  },
+  "platformVersion": "10.3.0",
+  "manifestVersion": "0.1"
+}
