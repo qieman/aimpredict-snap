@@ -5,6 +5,73 @@ export const DEFAULT_API_BASE_URL =
 
 export const MAX_IN_APP_NOTIFICATIONS_PER_CRON = 5;
 
+export const FOLLOWED_MARKET_TYPES = [
+  'event_price_alert',
+  'event_volume_alert',
+  'market_closing_soon',
+  'market_closed',
+  'market_price_breakthrough',
+] as const;
+
+export const PLATFORM_TYPES = ['platform_new_hot_market'] as const;
+
+export const REMINDER_TYPES = ['category_hot_alert'] as const;
+
+export type SnapMessageCategory = 'followed_market' | 'platform' | 'reminders';
+
+export const SNAP_MESSAGE_CATEGORY_ORDER: SnapMessageCategory[] = [
+  'followed_market',
+  'platform',
+  'reminders',
+];
+
+export const SNAP_MESSAGE_CATEGORY_TITLES: Record<SnapMessageCategory, string> =
+  {
+    followed_market: 'New updates in your followed markets',
+    platform: 'New updates from platforms you follow',
+    reminders: 'New updates in categories you follow',
+  };
+
+const CATEGORY_TYPE_MAP: Record<SnapMessageCategory, readonly string[]> = {
+  followed_market: FOLLOWED_MARKET_TYPES,
+  platform: PLATFORM_TYPES,
+  reminders: REMINDER_TYPES,
+};
+
+export function resolveSnapMessageCategory(
+  type: string,
+): SnapMessageCategory | null {
+  for (const category of SNAP_MESSAGE_CATEGORY_ORDER) {
+    if (CATEGORY_TYPE_MAP[category].includes(type)) {
+      return category;
+    }
+  }
+
+  return null;
+}
+
+export function groupMessagesByCategory(
+  messages: SnapMessage[],
+): Map<SnapMessageCategory, SnapMessage[]> {
+  const grouped = new Map<SnapMessageCategory, SnapMessage[]>();
+
+  for (const message of messages) {
+    const category = resolveSnapMessageCategory(message.type);
+    if (!category) {
+      continue;
+    }
+
+    const bucket = grouped.get(category);
+    if (bucket) {
+      bucket.push(message);
+    } else {
+      grouped.set(category, [message]);
+    }
+  }
+
+  return grouped;
+}
+
 export type SnapMessage = {
   id: number;
   type: string;
@@ -15,6 +82,7 @@ export type SnapMessage = {
   refEventName: string | null;
   refMarketId: number | null;
   refMarketName: string | null;
+  refPlatformName: string | null;
 };
 
 export type SnapMessagesResponse = {

@@ -3,9 +3,11 @@ import { describe, expect, it } from '@jest/globals';
 import {
   applyBaselineState,
   applyPollResultState,
+  groupMessagesByCategory,
   hasNewBoundAddresses,
   normalizeAddressList,
   resolveApiBaseUrl,
+  resolveSnapMessageCategory,
 } from './types';
 
 describe('normalizeAddressList', () => {
@@ -87,5 +89,75 @@ describe('applyPollResultState', () => {
       initialized: true,
       knownAddresses: ['0xab5801a7d398351b0be50c7e829c529e3d1e5688'],
     });
+  });
+});
+
+describe('resolveSnapMessageCategory', () => {
+  it('maps notification types to web-app tabs', () => {
+    expect(resolveSnapMessageCategory('event_price_alert')).toBe('followed_market');
+    expect(resolveSnapMessageCategory('platform_new_hot_market')).toBe('platform');
+    expect(resolveSnapMessageCategory('category_hot_alert')).toBe('reminders');
+    expect(resolveSnapMessageCategory('unknown_type')).toBeNull();
+  });
+});
+
+describe('groupMessagesByCategory', () => {
+  it('groups messages by category and ignores unknown types', () => {
+    const grouped = groupMessagesByCategory([
+      {
+        id: 1,
+        type: 'event_price_alert',
+        title: 'A',
+        body: 'Body A',
+        createdAt: 1,
+        refEventId: null,
+        refEventName: null,
+        refMarketId: null,
+        refMarketName: null,
+        refPlatformName: null,
+      },
+      {
+        id: 2,
+        type: 'market_closed',
+        title: 'B',
+        body: 'Body B',
+        createdAt: 2,
+        refEventId: null,
+        refEventName: null,
+        refMarketId: null,
+        refMarketName: null,
+        refPlatformName: null,
+      },
+      {
+        id: 3,
+        type: 'platform_new_hot_market',
+        title: 'C',
+        body: 'Body C',
+        createdAt: 3,
+        refEventId: null,
+        refEventName: null,
+        refMarketId: null,
+        refMarketName: null,
+        refPlatformName: null,
+      },
+      {
+        id: 4,
+        type: 'unknown_type',
+        title: 'D',
+        body: 'Body D',
+        createdAt: 4,
+        refEventId: null,
+        refEventName: null,
+        refMarketId: null,
+        refMarketName: null,
+        refPlatformName: null,
+      },
+    ]);
+
+    expect(grouped.get('followed_market')?.map((message) => message.id)).toEqual([
+      1, 2,
+    ]);
+    expect(grouped.get('platform')?.map((message) => message.id)).toEqual([3]);
+    expect(grouped.has('reminders')).toBe(false);
   });
 });

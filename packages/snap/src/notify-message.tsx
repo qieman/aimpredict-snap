@@ -1,27 +1,22 @@
 import { Box, Text } from '@metamask/snaps-sdk/jsx';
 
-import type { SnapMessage } from './types';
+import type { SnapMessage, SnapMessageCategory } from './types';
+import { SNAP_MESSAGE_CATEGORY_TITLES } from './types';
 
-const SNAP_NOTIFY_ALLOWED_LINK_PROTOCOLS = new Set([
-  'https:',
-  'mailto:',
-  'metamask:',
-]);
-
-function isSnapNotifyFooterLinkAllowed(href: string): boolean {
+function normalizeFooterLinkHref(apiBaseUrl: string): string {
   try {
-    return SNAP_NOTIFY_ALLOWED_LINK_PROTOCOLS.has(new URL(href).protocol);
+    const url = new URL(apiBaseUrl.trim());
+    if (url.protocol === 'http:') {
+      url.protocol = 'https:';
+    }
+    return url.origin;
   } catch {
-    return false;
+    return apiBaseUrl.trim().replace(/^http:\/\//i, 'https://').replace(/\/$/, '');
   }
 }
 
-function optionalFooterLink(text: string, href: string) {
-  if (!isSnapNotifyFooterLinkAllowed(href)) {
-    return {};
-  }
-
-  return { footerLink: { text, href } };
+function footerLink(text: string, href: string) {
+  return { footerLink: { text, href: normalizeFooterLinkHref(href) } };
 }
 
 const SHORT_MESSAGE_MAX_LENGTH = 80;
@@ -33,27 +28,6 @@ function truncateText(value: string, maxLength: number): string {
   }
 
   return `${trimmed.slice(0, maxLength - 3)}...`;
-}
-
-export function buildShortNotificationMessage(message: SnapMessage): string {
-  const title = message.title.trim();
-  if (title.length > 0) {
-    return truncateText(title, SHORT_MESSAGE_MAX_LENGTH);
-  }
-
-  return truncateText(message.body, SHORT_MESSAGE_MAX_LENGTH);
-}
-
-export function buildNotificationDetailUrl(
-  apiBaseUrl: string,
-  message: SnapMessage,
-): string {
-  const origin = apiBaseUrl.replace(/\/$/, '');
-  if (message.refEventId) {
-    return `${origin}/en-us?event=${message.refEventId}`;
-  }
-
-  return `${origin}/en-us`;
 }
 
 function formatBracketedName(name: string): string {
@@ -118,7 +92,61 @@ function shouldShowMarketName(
   return eventName.trim().toLowerCase() !== marketName.trim().toLowerCase();
 }
 
-export function buildNotificationContent(message: SnapMessage) {
+function resolvePlatformName(message: SnapMessage): string | null {
+  const fromPayload = message.refPlatformName?.trim();
+  if (fromPayload) {
+    return fromPayload;
+  }
+
+  const title = message.title.trim();
+  const suffix = ' New Hot Market';
+  if (title.endsWith(suffix)) {
+    const platformName = title.slice(0, -suffix.length).trim();
+    return platformName.length > 0 ? platformName : null;
+  }
+
+  return null;
+}
+
+function buildPlatformNotificationListItem(message: SnapMessage) {
+  const platformName = resolvePlatformName(message);
+  const eventName = message.refEventName?.trim() || null;
+  const marketName = message.refMarketName?.trim() || null;
+  const body = message.body.trim();
+
+  let prefix = '';
+  if (platformName) {
+    prefix += formatBracketedName(platformName);
+  }
+  if (eventName) {
+    prefix += formatBracketedName(eventName);
+  }
+  if (marketName) {
+    if (prefix.length > 0) {
+      prefix += ' ';
+    }
+    prefix += formatBracketedName(marketName);
+  }
+
+  const summaryParts = [prefix || null, body.length > 0 ? body : null].filter(
+    (part): part is string => Boolean(part),
+  );
+
+  if (summaryParts.length === 0) {
+    const fallback = message.title.trim() || message.body.trim();
+    return fallback.length > 0 ? (
+      <Text>{`• ${fallback}`}</Text>
+    ) : null;
+  }
+
+  return <Text>{`• ${summaryParts.join(' ')}`}</Text>;
+}
+
+function buildNotificationListItem(message: SnapMessage) {
+  if (message.type === 'platform_new_hot_market') {
+    return buildPlatformNotificationListItem(message);
+  }
+
   const eventName = message.refEventName?.trim() || null;
   const marketName = message.refMarketName?.trim() || null;
   const displayMarketName = shouldShowMarketName(eventName, marketName)
@@ -129,49 +157,42 @@ export function buildNotificationContent(message: SnapMessage) {
     eventName,
     displayMarketName,
   );
+  const summaryParts = [
+    eventName ? formatBracketedName(eventName) : null,
+    displayMarketName ? formatBracketedName(displayMarketName) : null,
+    body.length > 0 ? body : null,
+  ].filter((part): part is string => Boolean(part));
 
+  if (summaryParts.length === 0) {
+    const fallback = message.title.trim() || message.body.trim();
+    return fallback.length > 0 ? (
+      <Text>{`• ${fallback}`}</Text>
+    ) : null;
+  }
+
+  return <Text>{`• ${summaryParts.join(' ')}`}</Text>;
+}
+
+export function buildGroupedNotificationContent(messages: SnapMessage[]) {
   return (
     <Box>
-      {eventName ? <Text>{formatBracketedName(eventName)}</Text> : null}
-      {displayMarketName ? (
-        <Text>{formatBracketedName(displayMarketName)}</Text>
-      ) : null}
-      {body.length > 0 ? <Text>{body}</Text> : null}
+      {messages.map((message) => buildNotificationListItem(message))}
     </Box>
   );
 }
 
-export function buildOverflowNotificationNotifyParams(
-  overflow: number,
+export function buildGroupedNotificationNotifyParams(
+  category: SnapMessageCategory,
+  messages: SnapMessage[],
   apiBaseUrl: string,
 ) {
-  const href = `${apiBaseUrl.replace(/\/$/, '')}/en-us`;
+  const title = SNAP_MESSAGE_CATEGORY_TITLES[category];
 
   return {
     type: 'inApp' as const,
-    message: `You have ${overflow} more alerts`,
-    title: 'AimPredict Alerts',
-    content: (
-      <Box>
-        <Text>Open AimPredict to view the remaining notifications.</Text>
-      </Box>
-    ),
-    ...optionalFooterLink('Open AimPredict', href),
-  };
-}
-
-export function buildNotificationNotifyParams(
-  message: SnapMessage,
-  apiBaseUrl: string,
-) {
-  return {
-    type: 'inApp' as const,
-    message: buildShortNotificationMessage(message),
-    title: truncateText(message.title.trim() || 'AimPredict Alert', 120),
-    content: buildNotificationContent(message),
-    ...optionalFooterLink(
-      'View on AimPredict',
-      buildNotificationDetailUrl(apiBaseUrl, message),
-    ),
+    message: truncateText(title, SHORT_MESSAGE_MAX_LENGTH),
+    title: truncateText(title, 120),
+    content: buildGroupedNotificationContent(messages),
+    ...footerLink('Open AimPredict', apiBaseUrl),
   };
 }

@@ -1,16 +1,14 @@
-import type { SnapMessage, SnapMessagesResponse, SnapPollState } from './types';
+import type { SnapMessagesResponse, SnapPollState } from './types';
 import {
   applyBaselineState,
   applyPollResultState,
+  groupMessagesByCategory,
   hasNewBoundAddresses,
-  MAX_IN_APP_NOTIFICATIONS_PER_CRON,
   resolveApiBaseUrl,
+  SNAP_MESSAGE_CATEGORY_ORDER,
 } from './types';
 import { getPollState, setPollState } from './state';
-import {
-  buildNotificationNotifyParams,
-  buildOverflowNotificationNotifyParams,
-} from './notify-message';
+import { buildGroupedNotificationNotifyParams } from './notify-message';
 
 async function getEthereumAccounts(): Promise<string[]> {
   const accounts = (await ethereum.request({
@@ -72,26 +70,28 @@ async function fetchSnapMessages(
 }
 
 async function notifyMessages(
-  messages: SnapMessage[],
+  messages: SnapMessagesResponse['messages'],
   apiBaseUrl: string,
 ): Promise<void> {
   if (messages.length === 0) {
     return;
   }
 
-  const deliverable = messages.slice(0, MAX_IN_APP_NOTIFICATIONS_PER_CRON);
-  for (const message of deliverable) {
-    await snap.request({
-      method: 'snap_notify',
-      params: buildNotificationNotifyParams(message, apiBaseUrl),
-    });
-  }
+  const grouped = groupMessagesByCategory(messages);
 
-  const overflow = messages.length - deliverable.length;
-  if (overflow > 0) {
+  for (const category of SNAP_MESSAGE_CATEGORY_ORDER) {
+    const categoryMessages = grouped.get(category);
+    if (!categoryMessages || categoryMessages.length === 0) {
+      continue;
+    }
+
     await snap.request({
       method: 'snap_notify',
-      params: buildOverflowNotificationNotifyParams(overflow, apiBaseUrl),
+      params: buildGroupedNotificationNotifyParams(
+        category,
+        categoryMessages,
+        apiBaseUrl,
+      ),
     });
   }
 }
@@ -133,7 +133,13 @@ export async function pollMessages(): Promise<void> {
   }
 
   await setPollState(
-    applyPollResultState(state, response.latestId, response.boundAddresses),
+    applyPollResultState(
+      state,
+      response.messages.length > 0
+        ? Math.max(...response.messages.map((message) => message.id))
+        : response.latestId,
+      response.boundAddresses,
+    ),
   );
 }
 

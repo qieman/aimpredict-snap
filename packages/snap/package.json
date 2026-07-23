@@ -1,6 +1,6 @@
 {
   "name": "@aim-predict/snap",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Prediction Market Aggregator",
   "homepage": "https://www.aimpredict.com/",
   "license": "(MIT-0 OR Apache-2.0)",
@@ -36,8 +36,6 @@
     "@jest/globals": "^29.5.0",
     "@metamask/snaps-cli": "^8.3.0",
     "@metamask/snaps-jest": "^9.8.0",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
     "eslint": "^9.11.0",
     "jest": "^29.5.0",
     "rimraf": "^3.0.2",

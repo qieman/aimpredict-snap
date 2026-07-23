@@ -25,7 +25,7 @@ You can also install programmatically from a dapp:
 await ethereum.request({
   method: 'wallet_requestSnaps',
   params: {
-    'npm:@aim-predict/snap': { version: '0.1.0' },
+    'npm:@aim-predict/snap': { version: '0.1.1' },
   },
 });
 

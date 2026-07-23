@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Prediction Market Aggregator",
   "proposedName": "AimPredict",
   "repository": {
@@ -8,7 +8,7 @@
     "directory": "packages/snap/packages/snap"
   },
   "source": {
-    "shasum": "b4IG9F6AVJFjTUcVgR6kiF52GOHCUTRU18asYIP0/iM=",
+    "shasum": "L1Obe/QOfsV1LDT5Dih9wOrMC3U2VMjWPIU+8NHzY1o=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
